@@ -6,7 +6,17 @@
     <title>TOEFL Self-Evolving App</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        .option-btn:active { transform: scale(0.98); }
+        .option-btn {
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 0 rgba(0,0,0,0.05);
+}
+.option-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+}
+.option-btn:active {
+    transform: translateY(0);
+}
     </style>
 </head>
 <body class="bg-slate-50 min-h-screen">
