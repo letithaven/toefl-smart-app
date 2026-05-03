@@ -36,15 +36,17 @@
             </div>
         </header>
 
-        <!-- Category Selector -->
-        <div class="mb-6">
-            <select id="category-filter" onchange="initQuiz()" class="w-full p-3 rounded-xl border-2 border-slate-200 bg-white text-slate-700 font-semibold focus:border-blue-500 outline-none transition-all">
-                <option value="All">All Categories</option>
-                <option value="Structure">Structure</option>
-                <option value="Reading">Reading</option>
-                <option value="Listening">Listening</option>
-            </select>
-        </div>
+       <!-- Selector Paket -->
+<div class="mb-6">
+    <label class="text-[10px] font-bold text-slate-400 uppercase ml-1 mb-2 block">Pilih Simulasi</label>
+    <select id="packet-filter" onchange="initQuiz()" class="w-full p-4 rounded-2xl border-2 border-slate-100 bg-white text-slate-700 font-bold focus:border-blue-500 outline-none shadow-sm">
+        <option value="All">Semua Soal (Campuran)</option>
+        <option value="Paket 1">Simulasi Paket 1</option>
+        <option value="Paket 2">Simulasi Paket 2</option>
+        <option value="Paket 3">Simulasi Paket 3</option>
+        <option value="Paket 4">Simulasi Paket 4</option>
+    </select>
+</div>
 
         <!-- Quiz Card -->
         <div id="quiz-card" class="bg-white rounded-3xl shadow-xl shadow-slate-200/60 p-6 border border-white relative overflow-hidden">
@@ -74,7 +76,7 @@
     </div>
 
     <script>
-        // MASUKKAN LINK WEB APP KAMU DI SINI
+       // 1. PASTIKAN LINK WEB APP KAMU SUDAH BENAR DI SINI
         const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwWBhVE0vUqF2uBw5bZGM7aKiGD2RG-eKfAN_4lKUIf1cy4WMSb6XaVjCuhnKeiVEYQZw/exec";
         
         let allQuestions = [];
@@ -87,26 +89,42 @@
             clearInterval(timerInterval);
             seconds = 0;
             updateTimerDisplay();
-            
-            const cat = document.getElementById('category-filter').value;
-            document.getElementById('content').classList.add('hidden');
-            document.getElementById('loader').classList.remove('hidden');
-            
+    
+            const packet = document.getElementById('packet-filter').value;
+            const loader = document.getElementById('loader');
+            const content = document.getElementById('content');
+
+            content.classList.add('hidden');
+            loader.classList.remove('hidden');
+            loader.querySelector('p').innerText = "Fetching Questions...";
+    
             try {
-                const response = await fetch(`${WEB_APP_URL}?cat=${cat}`);
-                allQuestions = await response.json();
-                currentIndex = 0;
-                
-                if(allQuestions.length > 0) {
-                    startTimer();
-                    displayQuestion();
-                } else {
-                    document.getElementById('loader').innerHTML = "<p class='text-slate-400'>No questions found in this category.</p>";
-                }
-            } catch (error) {
-                alert("Connection Error. Check your Web App URL.");
-            }
+            const response = await fetch(`${WEB_APP_URL}?packet=${packet}`);
+            allQuestions = await response.json();
+        
+        // LOGIKA PEMICU GENERATE OTOMATIS
+            if((!allQuestions || allQuestions.length === 0) && packet !== "All") {
+            loader.querySelector('p').innerHTML = `
+                <span class="text-blue-600 font-bold">${packet} belum tersedia.</span><br>
+                <span class="text-xs">AI sedang meracik soal baru untukmu secara otomatis...</span>
+            `;
+            
+            // Memberitahu Apps Script untuk membuatkan soal baru
+            await fetch(`${WEB_APP_URL}?action=generate&packet=${packet}`);
+            
+            // Refresh setelah generate selesai
+            return initQuiz(); 
         }
+
+        currentIndex = 0;
+        if(allQuestions.length > 0) {
+            startTimer();
+            displayQuestion();
+        }
+    } catch (error) {
+        loader.querySelector('p').innerText = "Gagal memuat soal. Pastikan koneksi internet stabil.";
+    }
+}
 
         function displayQuestion() {
             const q = allQuestions[currentIndex];
@@ -118,7 +136,7 @@
             document.getElementById('feedback').classList.add('hidden');
             
             document.getElementById('ques').innerText = q.Question;
-            document.getElementById('cat-label').innerText = q.Category;
+            document.getElementById('cat-label').innerText = q.Category + " | " + (q.Packet || "Tanpa Paket");
 
             const container = document.getElementById('options-container');
             container.innerHTML = '';
@@ -144,13 +162,13 @@
                 score += 10;
                 clickedBtn.classList.replace('border-slate-100', 'border-green-500');
                 clickedBtn.classList.add('bg-green-50');
-                feedback.className = "mt-8 p-5 rounded-2xl bg-green-50 text-green-800 border border-green-100";
-                feedbackText.innerHTML = `<b class="text-lg">Correct!</b><br><span class="opacity-80">${exp}</span>`;
+                feedback.className = "mt-8 p-5 rounded-2xl bg-green-50 text-green-800 border border-green-100 shadow-sm";
+                feedbackText.innerHTML = `<b class="text-lg text-green-700">Correct!</b><br><span class="opacity-90">${exp}</span>`;
             } else {
                 clickedBtn.classList.replace('border-slate-100', 'border-red-500');
                 clickedBtn.classList.add('bg-red-50');
-                feedback.className = "mt-8 p-5 rounded-2xl bg-red-50 text-red-800 border border-red-100";
-                feedbackText.innerHTML = `<b class="text-lg">Incorrect. Answer: ${correct}</b><br><span class="opacity-80">${exp}</span>`;
+                feedback.className = "mt-8 p-5 rounded-2xl bg-red-50 text-red-800 border border-red-100 shadow-sm";
+                feedbackText.innerHTML = `<b class="text-lg text-red-700">Incorrect. Answer: ${correct}</b><br><span class="opacity-90">${exp}</span>`;
             }
             
             feedback.classList.remove('hidden');
@@ -163,7 +181,7 @@
                 startTimer();
                 displayQuestion();
             } else {
-                alert(`Quiz Finished! Your Final Score: ${score}`);
+                alert(`Latihan Selesai! Skor Akhir Anda: ${score}`);
                 initQuiz();
             }
         }
