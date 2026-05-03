@@ -39,67 +39,77 @@
             </div>
         </div>
     </div>
+<script>
+    // Pastikan link ini sama dengan yang terakhir kamu buat
+    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwvqLcEy-ftdez-jkdm-PYPl48RBIxopehxxz3XtjeM_dYdWjJGvz3UO9VWPuGHXEOjqg/exec";
+    let score = 0;
 
-    <script>
-        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwvqLcEy-ftdez-jkdm-PYPl48RBIxopehxxz3XtjeM_dYdWjJGvz3UO9VWPuGHXEOjqg/exec";
-        let score = 0;
+    async function fetchQuestions() {
+        document.getElementById('content').classList.add('hidden');
+        document.getElementById('loader').classList.remove('hidden');
+        document.getElementById('feedback').classList.add('hidden');
 
-        async function fetchQuestions() {
-            document.getElementById('content').classList.add('hidden');
-            document.getElementById('loader').classList.remove('hidden');
-            document.getElementById('feedback').classList.add('hidden');
-
-            try {
-                const response = await fetch(WEB_APP_URL);
-                const data = await response.json();
-                // Ambil soal terakhir yang baru ditambahkan
-                const latestQuestion = data[data.length - 1];
-                displayQuestion(latestQuestion);
-            } catch (error) {
-                alert("Gagal mengambil data. Pastikan Web App sudah di-deploy ke 'Anyone'.");
-            }
-        }
-
-        function displayQuestion(q) {
-            document.getElementById('loader').classList.add('hidden');
-            document.getElementById('content').classList.remove('hidden');
-            document.getElementById('ques').innerText = q.Question;
-            document.getElementById('cat').innerText = q.Category;
-
-            const container = document.getElementById('options-container');
-            container.innerHTML = '';
-
-            ['A', 'B', 'C', 'D'].forEach(opt => {
-                const btn = document.createElement('button');
-                btn.className = "option-btn w-full text-left p-4 rounded-xl border-2 border-slate-100 hover:border-blue-400 hover:bg-blue-50 transition-all duration-200 text-slate-700 font-medium";
-                
-                // Kode di bawah ini akan mencoba membaca 'Opt_A' atau 'A' agar tidak error
-                const optionText = q['Opt_' + opt] || q[opt];
-                
-                btn.innerHTML = `<span class="text-blue-500 mr-2">${opt}.</span> ${optionText}`;
-                btn.onclick = () => checkAnswer(opt, q.Key, q.Explanation);
-                container.appendChild(btn);
-            });
-        }
-
-        function checkAnswer(choice, correct, exp) {
-            const feedback = document.getElementById('feedback');
-            const feedbackText = document.getElementById('feedback-text');
-            feedback.classList.remove('hidden');
-
-            if (choice === correct) {
-                score += 10;
-                feedback.className = "mt-6 p-4 rounded-xl bg-green-50 text-green-700 border border-green-100";
-                feedbackText.innerHTML = `<strong>Benar!</strong> <br> ${exp}`;
+        try {
+            // Kita tambahkan pengalihan (redirect) karena Google Apps Script sering melakukan redirect
+            const response = await fetch(WEB_APP_URL);
+            if (!response.ok) throw new Error('Network response was not ok');
+            
+            const data = await response.json();
+            
+            if (data && data.length > 0) {
+                // Ambil soal secara acak agar tidak itu-itu saja
+                const randomIndex = Math.floor(Math.random() * data.length);
+                displayQuestion(data[randomIndex]);
             } else {
-                feedback.className = "mt-6 p-4 rounded-xl bg-red-50 text-red-700 border border-red-100";
-                feedbackText.innerHTML = `<strong>Salah. Jawaban yang benar adalah ${correct}.</strong> <br> ${exp}`;
+                alert("Bank soal masih kosong. Silakan generate soal dulu di Apps Script.");
             }
-            document.getElementById('score').innerText = `Skor: ${score}`;
+        } catch (error) {
+            console.error("Error detail:", error);
+            alert("Koneksi gagal. Pastikan link Web App benar dan sudah di-deploy sebagai 'Anyone'.");
         }
+    }
 
-        // Mulai pertama kali
-        fetchQuestions();
-    </script>
+    function displayQuestion(q) {
+        document.getElementById('loader').classList.add('hidden');
+        document.getElementById('content').classList.remove('hidden');
+        document.getElementById('ques').innerText = q.Question;
+        document.getElementById('cat').innerText = q.Category || "Structure";
+
+        const container = document.getElementById('options-container');
+        container.innerHTML = '';
+
+        ['A', 'B', 'C', 'D'].forEach(opt => {
+            const btn = document.createElement('button');
+            btn.className = "option-btn w-full text-left p-4 rounded-xl border-2 border-slate-100 hover:border-blue-400 hover:bg-blue-50 transition-all duration-200 text-slate-700 font-medium";
+            
+            // Mengambil teks jawaban (antisipasi perbedaan nama kolom)
+            const optionText = q['Opt_' + opt] || q[opt] || "Option " + opt;
+            
+            btn.innerHTML = `<span class="text-blue-500 mr-2">${opt}.</span> ${optionText}`;
+            btn.onclick = () => checkAnswer(opt, q.Key, q.Explanation);
+            container.appendChild(btn);
+        });
+    }
+
+    function checkAnswer(choice, correct, exp) {
+        const feedback = document.getElementById('feedback');
+        const feedbackText = document.getElementById('feedback-text');
+        feedback.classList.remove('hidden');
+
+        // Normalisasi jawaban (menghilangkan spasi)
+        if (choice.trim() === correct.trim()) {
+            score += 10;
+            feedback.className = "mt-6 p-4 rounded-xl bg-green-50 text-green-700 border border-green-100";
+            feedbackText.innerHTML = `<strong>Benar!</strong> <br> ${exp}`;
+        } else {
+            feedback.className = "mt-6 p-4 rounded-xl bg-red-50 text-red-700 border border-red-100";
+            feedbackText.innerHTML = `<strong>Salah. Jawaban yang benar adalah ${correct}.</strong> <br> ${exp}`;
+        }
+        document.getElementById('score').innerText = `Skor: ${score}`;
+    }
+
+    // Jalankan saat halaman dibuka
+    window.onload = fetchQuestions;
+</script>
 </body>
 </html>
