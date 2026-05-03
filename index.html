@@ -11,105 +11,124 @@
 </head>
 <body class="bg-slate-50 min-h-screen">
     <div class="max-w-md mx-auto p-4">
-        <!-- Header -->
         <header class="flex justify-between items-center mb-6 py-4">
             <h1 class="text-xl font-bold text-slate-800">TOEFL <span class="text-blue-600">Smart</span></h1>
-            <div id="score" class="text-sm font-semibold bg-blue-100 text-blue-700 px-3 py-1 rounded-full">Skor: 0</div>
+            <div id="score-box" class="text-sm font-semibold bg-blue-100 text-blue-700 px-3 py-1 rounded-full">Skor: 0</div>
         </header>
 
-        <!-- Quiz Card -->
-        <div id="quiz-card" class="bg-white rounded-2xl shadow-xl shadow-slate-200/60 p-6 border border-slate-100">
+        <!-- Filter Kategori -->
+        <div class="mb-6">
+            <select id="category-filter" onchange="fetchQuestions()" class="w-full p-3 rounded-xl border-2 border-slate-200 bg-white text-slate-700 font-medium focus:border-blue-500 outline-none">
+                <option value="All">Semua Kategori</option>
+                <option value="Structure">Structure & Written Expression</option>
+                <option value="Reading">Reading Comprehension</option>
+                <option value="Listening">Listening (Script)</option>
+            </select>
+        </div>
+
+        <div id="quiz-card" class="bg-white rounded-2xl shadow-xl p-6 border border-slate-100">
             <div id="loader" class="text-center py-10">
                 <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mx-auto"></div>
-                <p class="mt-4 text-slate-500">Mengambil soal terbaru...</p>
+                <p class="mt-4 text-slate-500">Memuat soal-soal...</p>
             </div>
 
             <div id="content" class="hidden">
-                <span id="cat" class="text-[10px] uppercase tracking-widest font-bold text-blue-500 mb-2 block">STRUCTURE</span>
-                <p id="ques" class="text-lg text-slate-800 font-medium leading-relaxed mb-6">Loading soal...</p>
-                
-                <div id="options-container" class="space-y-3">
-                    <!-- Tombol Pilihan -->
+                <div class="flex justify-between items-center mb-2">
+                    <span id="cat" class="text-[10px] uppercase tracking-widest font-bold text-blue-500">STRUCTURE</span>
+                    <span id="question-count" class="text-[10px] text-slate-400 font-bold">SOAL 1</span>
                 </div>
+                <p id="ques" class="text-lg text-slate-800 font-medium leading-relaxed mb-6">...</p>
+                
+                <div id="options-container" class="space-y-3"></div>
 
                 <div id="feedback" class="mt-6 p-4 rounded-xl hidden">
                     <p id="feedback-text" class="text-sm font-medium"></p>
-                    <button onclick="fetchQuestions()" class="mt-4 w-full bg-slate-800 text-white py-3 rounded-xl font-semibold hover:bg-slate-700">Soal Selanjutnya</button>
+                    <button onclick="nextQuestion()" class="mt-4 w-full bg-slate-800 text-white py-3 rounded-xl font-semibold hover:bg-slate-700 transition-colors">Soal Berikutnya</button>
                 </div>
             </div>
         </div>
     </div>
-<script>
-    // Pastikan link ini sama dengan yang terakhir kamu buat
-    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwA2TJHAUpVQXLPkCx3vVwuJ9OS2zuPOS_ntImw473oc7aQbhyO9ErBMIcRuEQBeyCe/exec";
-    let score = 0;
 
-    async function fetchQuestions() {
-        document.getElementById('content').classList.add('hidden');
-        document.getElementById('loader').classList.remove('hidden');
-        document.getElementById('feedback').classList.add('hidden');
+    <script>
+        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwWBhVE0vUqF2uBw5bZGM7aKiGD2RG-eKfAN_4lKUIf1cy4WMSb6XaVjCuhnKeiVEYQZw/exec";
+        let allQuestions = [];
+        let currentIndex = 0;
+        let score = 0;
 
-        try {
-            // Kita tambahkan pengalihan (redirect) karena Google Apps Script sering melakukan redirect
-            const response = await fetch(WEB_APP_URL);
-            if (!response.ok) throw new Error('Network response was not ok');
+        async function fetchQuestions() {
+            const cat = document.getElementById('category-filter').value;
+            document.getElementById('content').classList.add('hidden');
+            document.getElementById('loader').classList.remove('hidden');
             
-            const data = await response.json();
-            
-            if (data && data.length > 0) {
-                // Ambil soal secara acak agar tidak itu-itu saja
-                const randomIndex = Math.floor(Math.random() * data.length);
-                displayQuestion(data[randomIndex]);
-            } else {
-                alert("Bank soal masih kosong. Silakan generate soal dulu di Apps Script.");
+            try {
+                const response = await fetch(`${WEB_APP_URL}?cat=${cat}`);
+                allQuestions = await response.json();
+                currentIndex = 0;
+                if(allQuestions.length > 0) {
+                    displayQuestion();
+                } else {
+                    document.getElementById('loader').innerHTML = "Belum ada soal di kategori ini.";
+                }
+            } catch (error) {
+                alert("Gagal mengambil data.");
             }
-        } catch (error) {
-            console.error("Error detail:", error);
-            alert("Koneksi gagal. Pastikan link Web App benar dan sudah di-deploy sebagai 'Anyone'.");
         }
-    }
 
-    function displayQuestion(q) {
-        document.getElementById('loader').classList.add('hidden');
-        document.getElementById('content').classList.remove('hidden');
-        document.getElementById('ques').innerText = q.Question;
-        document.getElementById('cat').innerText = q.Category || "Structure";
-
-        const container = document.getElementById('options-container');
-        container.innerHTML = '';
-
-        ['A', 'B', 'C', 'D'].forEach(opt => {
-            const btn = document.createElement('button');
-            btn.className = "option-btn w-full text-left p-4 rounded-xl border-2 border-slate-100 hover:border-blue-400 hover:bg-blue-50 transition-all duration-200 text-slate-700 font-medium";
+        function displayQuestion() {
+            const q = allQuestions[currentIndex];
+            document.getElementById('loader').classList.add('hidden');
+            document.getElementById('content').classList.remove('hidden');
+            document.getElementById('feedback').classList.add('hidden');
             
-            // Mengambil teks jawaban (antisipasi perbedaan nama kolom)
-            const optionText = q['Opt_' + opt] || q[opt] || "Option " + opt;
-            
-            btn.innerHTML = `<span class="text-blue-500 mr-2">${opt}.</span> ${optionText}`;
-            btn.onclick = () => checkAnswer(opt, q.Key, q.Explanation);
-            container.appendChild(btn);
-        });
-    }
+            document.getElementById('ques').innerText = q.Question;
+            document.getElementById('cat').innerText = q.Category;
+            document.getElementById('question-count').innerText = `SOAL ${currentIndex + 1} / ${allQuestions.length}`;
 
-    function checkAnswer(choice, correct, exp) {
-        const feedback = document.getElementById('feedback');
-        const feedbackText = document.getElementById('feedback-text');
-        feedback.classList.remove('hidden');
+            const container = document.getElementById('options-container');
+            container.innerHTML = '';
 
-        // Normalisasi jawaban (menghilangkan spasi)
-        if (choice.trim() === correct.trim()) {
-            score += 10;
-            feedback.className = "mt-6 p-4 rounded-xl bg-green-50 text-green-700 border border-green-100";
-            feedbackText.innerHTML = `<strong>Benar!</strong> <br> ${exp}`;
-        } else {
-            feedback.className = "mt-6 p-4 rounded-xl bg-red-50 text-red-700 border border-red-100";
-            feedbackText.innerHTML = `<strong>Salah. Jawaban yang benar adalah ${correct}.</strong> <br> ${exp}`;
+            ['A', 'B', 'C', 'D'].forEach(opt => {
+                const btn = document.createElement('button');
+                btn.className = "option-btn w-full text-left p-4 rounded-xl border-2 border-slate-100 hover:border-blue-400 hover:bg-blue-50 transition-all text-slate-700 font-medium";
+                btn.innerHTML = `<span class="text-blue-500 mr-2">${opt}.</span> ${q['Opt_' + opt] || q[opt]}`;
+                btn.onclick = () => checkAnswer(opt, q.Key, q.Explanation, btn);
+                container.appendChild(btn);
+            });
         }
-        document.getElementById('score').innerText = `Skor: ${score}`;
-    }
 
-    // Jalankan saat halaman dibuka
-    window.onload = fetchQuestions;
-</script>
+        function checkAnswer(choice, correct, exp, clickedBtn) {
+            const feedback = document.getElementById('feedback');
+            const feedbackText = document.getElementById('feedback-text');
+            
+            // Disable semua tombol agar tidak bisa klik dua kali
+            const buttons = document.querySelectorAll('.option-btn');
+            buttons.forEach(b => b.disabled = true);
+
+            if (choice === correct) {
+                score += 10;
+                clickedBtn.classList.add('border-green-500', 'bg-green-50');
+                feedback.className = "mt-6 p-4 rounded-xl bg-green-50 text-green-700 border border-green-100";
+                feedbackText.innerHTML = `<strong>Benar!</strong><br>${exp}`;
+            } else {
+                clickedBtn.classList.add('border-red-500', 'bg-red-50');
+                feedback.className = "mt-6 p-4 rounded-xl bg-red-50 text-red-700 border border-red-100";
+                feedbackText.innerHTML = `<strong>Salah! Jawaban: ${correct}</strong><br>${exp}`;
+            }
+            feedback.classList.remove('hidden');
+            document.getElementById('score-box').innerText = `Skor: ${score}`;
+        }
+
+        function nextQuestion() {
+            if (currentIndex < allQuestions.length - 1) {
+                currentIndex++;
+                displayQuestion();
+            } else {
+                alert("Latihan selesai! Kamu sudah mengerjakan semua soal di sesi ini.");
+                fetchQuestions(); // Refresh soal
+            }
+        }
+
+        window.onload = fetchQuestions;
+    </script>
 </body>
 </html>
