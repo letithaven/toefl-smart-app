@@ -72,7 +72,11 @@
             ['A', 'B', 'C', 'D'].forEach(opt => {
                 const btn = document.createElement('button');
                 btn.className = "option-btn w-full text-left p-4 rounded-xl border-2 border-slate-100 hover:border-blue-400 hover:bg-blue-50 transition-all duration-200 text-slate-700 font-medium";
-                btn.innerHTML = `<span class="text-blue-500 mr-2">${opt}.</span> ${q['Opt_' + opt] || q[opt]}`;
+                
+                // Kode di bawah ini akan mencoba membaca 'Opt_A' atau 'A' agar tidak error
+                const optionText = q['Opt_' + opt] || q[opt];
+                
+                btn.innerHTML = `<span class="text-blue-500 mr-2">${opt}.</span> ${optionText}`;
                 btn.onclick = () => checkAnswer(opt, q.Key, q.Explanation);
                 container.appendChild(btn);
             });
