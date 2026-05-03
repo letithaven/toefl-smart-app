@@ -1,71 +1,93 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TOEFL Self-Evolving App</title>
+    <title>TOEFL Smart Prep</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .option-btn {
-    transition: all 0.2s ease;
-    box-shadow: 0 2px 0 rgba(0,0,0,0.05);
-}
-.option-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
-}
-.option-btn:active {
-    transform: translateY(0);
-}
+            transition: all 0.2s ease;
+        }
+        .option-btn:not(:disabled):hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+        }
+        .option-btn:disabled { cursor: not-allowed; }
     </style>
 </head>
-<body class="bg-slate-50 min-h-screen">
+<body class="bg-slate-50 min-h-screen font-sans">
+
     <div class="max-w-md mx-auto p-4">
-        <header class="flex justify-between items-center mb-6 py-4">
-            <h1 class="text-xl font-bold text-slate-800">TOEFL <span class="text-blue-600">Smart</span></h1>
-            <div id="score-box" class="text-sm font-semibold bg-blue-100 text-blue-700 px-3 py-1 rounded-full">Skor: 0</div>
+        <!-- Progress Bar -->
+        <div class="w-full bg-slate-200 h-1.5 rounded-full mb-6 overflow-hidden">
+            <div id="progress-bar" class="bg-blue-600 h-full transition-all duration-700" style="width: 0%"></div>
+        </div>
+
+        <!-- Header -->
+        <header class="flex justify-between items-end mb-6">
+            <div>
+                <h1 class="text-2xl font-extrabold text-slate-800 tracking-tight">TOEFL<span class="text-blue-600">Smart</span></h1>
+                <p id="cat-label" class="text-[10px] font-bold uppercase tracking-widest text-blue-500">READY TO START</p>
+            </div>
+            <div class="text-right">
+                <div id="timer" class="text-xl font-mono font-bold text-slate-700">00:00</div>
+                <div id="score-display" class="text-xs font-bold text-slate-400">Score: 0</div>
+            </div>
         </header>
 
-        <!-- Filter Kategori -->
+        <!-- Category Selector -->
         <div class="mb-6">
-            <select id="category-filter" onchange="fetchQuestions()" class="w-full p-3 rounded-xl border-2 border-slate-200 bg-white text-slate-700 font-medium focus:border-blue-500 outline-none">
-                <option value="All">Semua Kategori</option>
-                <option value="Structure">Structure & Written Expression</option>
-                <option value="Reading">Reading Comprehension</option>
-                <option value="Listening">Listening (Script)</option>
+            <select id="category-filter" onchange="initQuiz()" class="w-full p-3 rounded-xl border-2 border-slate-200 bg-white text-slate-700 font-semibold focus:border-blue-500 outline-none transition-all">
+                <option value="All">All Categories</option>
+                <option value="Structure">Structure</option>
+                <option value="Reading">Reading</option>
+                <option value="Listening">Listening</option>
             </select>
         </div>
 
-        <div id="quiz-card" class="bg-white rounded-2xl shadow-xl p-6 border border-slate-100">
-            <div id="loader" class="text-center py-10">
+        <!-- Quiz Card -->
+        <div id="quiz-card" class="bg-white rounded-3xl shadow-xl shadow-slate-200/60 p-6 border border-white relative overflow-hidden">
+            <!-- Loader -->
+            <div id="loader" class="py-12 text-center">
                 <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mx-auto"></div>
-                <p class="mt-4 text-slate-500">Memuat soal-soal...</p>
+                <p class="mt-4 text-slate-400 font-medium">Fetching Questions...</p>
             </div>
 
+            <!-- Content -->
             <div id="content" class="hidden">
-                <div class="flex justify-between items-center mb-2">
-                    <span id="cat" class="text-[10px] uppercase tracking-widest font-bold text-blue-500">STRUCTURE</span>
-                    <span id="question-count" class="text-[10px] text-slate-400 font-bold">SOAL 1</span>
-                </div>
-                <p id="ques" class="text-lg text-slate-800 font-medium leading-relaxed mb-6">...</p>
+                <p id="ques" class="text-lg text-slate-800 font-semibold leading-relaxed mb-8">...</p>
                 
-                <div id="options-container" class="space-y-3"></div>
+                <div id="options-container" class="space-y-3">
+                    <!-- Buttons will appear here -->
+                </div>
 
-                <div id="feedback" class="mt-6 p-4 rounded-xl hidden">
-                    <p id="feedback-text" class="text-sm font-medium"></p>
-                    <button onclick="nextQuestion()" class="mt-4 w-full bg-slate-800 text-white py-3 rounded-xl font-semibold hover:bg-slate-700 transition-colors">Soal Berikutnya</button>
+                <!-- Feedback Section -->
+                <div id="feedback" class="mt-8 p-5 rounded-2xl hidden transition-all">
+                    <p id="feedback-text" class="text-sm leading-relaxed"></p>
+                    <button onclick="nextQuestion()" class="mt-5 w-full bg-slate-900 text-white py-4 rounded-xl font-bold hover:bg-blue-600 transition-colors shadow-lg shadow-blue-200">
+                        Next Question
+                    </button>
                 </div>
             </div>
         </div>
     </div>
 
     <script>
+        // MASUKKAN LINK WEB APP KAMU DI SINI
         const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwWBhVE0vUqF2uBw5bZGM7aKiGD2RG-eKfAN_4lKUIf1cy4WMSb6XaVjCuhnKeiVEYQZw/exec";
+        
         let allQuestions = [];
         let currentIndex = 0;
         let score = 0;
+        let seconds = 0;
+        let timerInterval;
 
-        async function fetchQuestions() {
+        async function initQuiz() {
+            clearInterval(timerInterval);
+            seconds = 0;
+            updateTimerDisplay();
+            
             const cat = document.getElementById('category-filter').value;
             document.getElementById('content').classList.add('hidden');
             document.getElementById('loader').classList.remove('hidden');
@@ -74,71 +96,93 @@
                 const response = await fetch(`${WEB_APP_URL}?cat=${cat}`);
                 allQuestions = await response.json();
                 currentIndex = 0;
+                
                 if(allQuestions.length > 0) {
+                    startTimer();
                     displayQuestion();
                 } else {
-                    document.getElementById('loader').innerHTML = "Belum ada soal di kategori ini.";
+                    document.getElementById('loader').innerHTML = "<p class='text-slate-400'>No questions found in this category.</p>";
                 }
             } catch (error) {
-                alert("Gagal mengambil data.");
+                alert("Connection Error. Check your Web App URL.");
             }
         }
 
         function displayQuestion() {
             const q = allQuestions[currentIndex];
+            const progress = ((currentIndex + 1) / allQuestions.length) * 100;
+            
+            document.getElementById('progress-bar').style.width = `${progress}%`;
             document.getElementById('loader').classList.add('hidden');
             document.getElementById('content').classList.remove('hidden');
             document.getElementById('feedback').classList.add('hidden');
             
             document.getElementById('ques').innerText = q.Question;
-            document.getElementById('cat').innerText = q.Category;
-            document.getElementById('question-count').innerText = `SOAL ${currentIndex + 1} / ${allQuestions.length}`;
+            document.getElementById('cat-label').innerText = q.Category;
 
             const container = document.getElementById('options-container');
             container.innerHTML = '';
 
             ['A', 'B', 'C', 'D'].forEach(opt => {
                 const btn = document.createElement('button');
-                btn.className = "option-btn w-full text-left p-4 rounded-xl border-2 border-slate-100 hover:border-blue-400 hover:bg-blue-50 transition-all text-slate-700 font-medium";
-                btn.innerHTML = `<span class="text-blue-500 mr-2">${opt}.</span> ${q['Opt_' + opt] || q[opt]}`;
+                btn.className = "option-btn w-full text-left p-4 rounded-2xl border-2 border-slate-100 bg-slate-50 text-slate-700 font-bold hover:bg-white hover:border-blue-400";
+                btn.innerHTML = `<span class="text-blue-500 mr-3">${opt}</span> ${q['Opt_' + opt] || q[opt]}`;
                 btn.onclick = () => checkAnswer(opt, q.Key, q.Explanation, btn);
                 container.appendChild(btn);
             });
         }
 
         function checkAnswer(choice, correct, exp, clickedBtn) {
-            const feedback = document.getElementById('feedback');
-            const feedbackText = document.getElementById('feedback-text');
-            
-            // Disable semua tombol agar tidak bisa klik dua kali
+            clearInterval(timerInterval);
             const buttons = document.querySelectorAll('.option-btn');
             buttons.forEach(b => b.disabled = true);
 
+            const feedback = document.getElementById('feedback');
+            const feedbackText = document.getElementById('feedback-text');
+            
             if (choice === correct) {
                 score += 10;
-                clickedBtn.classList.add('border-green-500', 'bg-green-50');
-                feedback.className = "mt-6 p-4 rounded-xl bg-green-50 text-green-700 border border-green-100";
-                feedbackText.innerHTML = `<strong>Benar!</strong><br>${exp}`;
+                clickedBtn.classList.replace('border-slate-100', 'border-green-500');
+                clickedBtn.classList.add('bg-green-50');
+                feedback.className = "mt-8 p-5 rounded-2xl bg-green-50 text-green-800 border border-green-100";
+                feedbackText.innerHTML = `<b class="text-lg">Correct!</b><br><span class="opacity-80">${exp}</span>`;
             } else {
-                clickedBtn.classList.add('border-red-500', 'bg-red-50');
-                feedback.className = "mt-6 p-4 rounded-xl bg-red-50 text-red-700 border border-red-100";
-                feedbackText.innerHTML = `<strong>Salah! Jawaban: ${correct}</strong><br>${exp}`;
+                clickedBtn.classList.replace('border-slate-100', 'border-red-500');
+                clickedBtn.classList.add('bg-red-50');
+                feedback.className = "mt-8 p-5 rounded-2xl bg-red-50 text-red-800 border border-red-100";
+                feedbackText.innerHTML = `<b class="text-lg">Incorrect. Answer: ${correct}</b><br><span class="opacity-80">${exp}</span>`;
             }
+            
             feedback.classList.remove('hidden');
-            document.getElementById('score-box').innerText = `Skor: ${score}`;
+            document.getElementById('score-display').innerText = `Score: ${score}`;
         }
 
         function nextQuestion() {
             if (currentIndex < allQuestions.length - 1) {
                 currentIndex++;
+                startTimer();
                 displayQuestion();
             } else {
-                alert("Latihan selesai! Kamu sudah mengerjakan semua soal di sesi ini.");
-                fetchQuestions(); // Refresh soal
+                alert(`Quiz Finished! Your Final Score: ${score}`);
+                initQuiz();
             }
         }
 
-        window.onload = fetchQuestions;
+        function startTimer() {
+            clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                seconds++;
+                updateTimerDisplay();
+            }, 1000);
+        }
+
+        function updateTimerDisplay() {
+            const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+            const s = (seconds % 60).toString().padStart(2, '0');
+            document.getElementById('timer').innerText = `${m}:${s}`;
+        }
+
+        window.onload = initQuiz;
     </script>
 </body>
 </html>
