@@ -126,30 +126,73 @@
     }
 }
 
-        function displayQuestion() {
-            const q = allQuestions[currentIndex];
-            const progress = ((currentIndex + 1) / allQuestions.length) * 100;
-            
-            document.getElementById('progress-bar').style.width = `${progress}%`;
-            document.getElementById('loader').classList.add('hidden');
-            document.getElementById('content').classList.remove('hidden');
-            document.getElementById('feedback').classList.add('hidden');
-            
-            document.getElementById('ques').innerText = q.Question;
-            document.getElementById('cat-label').innerText = q.Category + " | " + (q.Packet || "Tanpa Paket");
+function displayQuestion() {
+    const q = allQuestions[currentIndex];
+    const progress = ((currentIndex + 1) / allQuestions.length) * 100;
+    
+    document.getElementById('progress-bar').style.width = `${progress}%`;
+    document.getElementById('loader').classList.add('hidden');
+    document.getElementById('content').classList.remove('hidden');
+    document.getElementById('feedback').classList.add('hidden');
+    
+    document.getElementById('cat-label').innerText = q.Category + " | " + (q.Packet || "Tanpa Paket");
 
-            const container = document.getElementById('options-container');
-            container.innerHTML = '';
+    const container = document.getElementById('options-container');
+    container.innerHTML = '';
 
-            ['A', 'B', 'C', 'D'].forEach(opt => {
-                const btn = document.createElement('button');
-                btn.className = "option-btn w-full text-left p-4 rounded-2xl border-2 border-slate-100 bg-slate-50 text-slate-700 font-bold hover:bg-white hover:border-blue-400";
-                btn.innerHTML = `<span class="text-blue-500 mr-3">${opt}</span> ${q['Opt_' + opt] || q[opt]}`;
-                btn.onclick = () => checkAnswer(opt, q.Key, q.Explanation, btn);
-                container.appendChild(btn);
-            });
-        }
+    // --- FITUR PRO: BOX TEKS READING ---
+    let questionText = q.Question;
+    let readingBox = "";
+    
+    if (q.Category === "Reading" && questionText.includes("|||")) {
+        const parts = questionText.split("|||");
+        readingBox = `<div class="mb-6 p-4 bg-slate-100 rounded-2xl text-sm leading-relaxed text-slate-600 border-l-4 border-blue-500 max-h-60 overflow-y-auto italic">
+                        ${parts[0]}
+                      </div>`;
+        questionText = parts[1]; // Soal aslinya setelah pemisah
+    }
 
+    // --- FITUR PRO: TOMBOL TTS LISTENING ---
+    let listeningUI = "";
+    if (q.Category === "Listening") {
+        listeningUI = `
+            <div class="mb-6 flex justify-center">
+                <button onclick="playTTS('${questionText.replace(/'/g, "\\'")}')" class="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-full hover:bg-blue-700 transition-all shadow-lg shadow-blue-200">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Dengarkan Audio
+                </button>
+            </div>`;
+    }
+
+    // Update tampilan soal
+    document.getElementById('ques').innerHTML = `
+        ${readingBox}
+        ${listeningUI}
+        <span class="${q.Category === 'Listening' ? 'hidden' : ''}">${questionText}</span>
+    `;
+
+    ['A', 'B', 'C', 'D'].forEach(opt => {
+        const btn = document.createElement('button');
+        btn.className = "option-btn w-full text-left p-4 rounded-2xl border-2 border-slate-100 bg-slate-50 text-slate-700 font-bold hover:bg-white hover:border-blue-400";
+        btn.innerHTML = `<span class="text-blue-500 mr-3">${opt}</span> ${q['Opt_' + opt] || q[opt]}`;
+        btn.onclick = () => checkAnswer(opt, q.Key, q.Explanation, btn);
+        container.appendChild(btn);
+    });
+}
+
+// Fungsi untuk menjalankan suara (TTS)
+function playTTS(text) {
+    // Berhenti jika ada suara lain yang sedang berjalan
+    window.speechSynthesis.cancel();
+    
+    const msg = new SpeechSynthesisUtterance(text);
+    msg.lang = 'en-US'; // Set bahasa Inggris
+    msg.rate = 0.9;     // Kecepatan sedikit diperlambat agar jelas
+    window.speechSynthesis.speak(msg);
+}
         function checkAnswer(choice, correct, exp, clickedBtn) {
             clearInterval(timerInterval);
             const buttons = document.querySelectorAll('.option-btn');
